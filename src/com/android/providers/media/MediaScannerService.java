@@ -102,7 +102,9 @@ public class MediaScannerService extends Service implements Runnable
                 }
 
                 MediaScanner scanner = createMediaScanner();
+	    if(directories!=null){
                 scanner.scanDirectories(directories, volumeName);
+	    }
             } catch (Exception e) {
                 Log.e(TAG, "exception in MediaScanner.scan()", e);
             }
@@ -186,8 +188,7 @@ public class MediaScannerService extends Service implements Runnable
         Looper.loop();
     }
    
-    private Uri scanFile(String path, String mimeType) {
-        String volumeName = MediaProvider.EXTERNAL_VOLUME;
+    private Uri scanFile(String path, String volumeName, String mimeType) {
         openDatabase(volumeName);
         MediaScanner scanner = createMediaScanner();
         try {
@@ -235,6 +236,7 @@ public class MediaScannerService extends Service implements Runnable
         {
             Bundle arguments = (Bundle) msg.obj;
             String filePath = arguments.getString("filepath");
+			String path = arguments.getString("path");
             
             try {
                 if (filePath != null) {
@@ -243,7 +245,8 @@ public class MediaScannerService extends Service implements Runnable
                             (binder == null ? null : IMediaScannerListener.Stub.asInterface(binder));
                     Uri uri = null;
                     try {
-                        uri = scanFile(filePath, arguments.getString("mimetype"));
+						String volume = arguments.getString("volume");
+                        uri = scanFile(filePath, volume, arguments.getString("mimetype"));
                     } catch (Exception e) {
                         Log.e(TAG, "Exception scanning file", e);
                     }
@@ -263,7 +266,11 @@ public class MediaScannerService extends Service implements Runnable
                     }
                     else if (MediaProvider.EXTERNAL_VOLUME.equals(volume)) {
                         // scan external storage volumes
+			if (path == null) {
                         directories = mExternalStoragePaths;
+                        } else {
+                            directories = new String[] {path};
+                        }
                     }
 
                     if (directories != null) {

@@ -39,11 +39,10 @@ public class MediaScannerReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
         final Uri uri = intent.getData();
-		String packageName = intent.getStringExtra("package");
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
             // Scan both internal and external storage
-            scan(context, MediaProvider.INTERNAL_VOLUME);
-            scan(context, MediaProvider.EXTERNAL_VOLUME);
+            scan(context, MediaProvider.INTERNAL_VOLUME, null);
+			scan(context, MediaProvider.EXTERNAL_VOLUME, null);
 
         }else if((VolumeInfo.ACTION_VOLUME_STATE_CHANGED.equals(action))){
 		if(("true".equals(SystemProperties.get("ro.udisk.visible")))){
@@ -55,11 +54,9 @@ public class MediaScannerReceiver extends BroadcastReceiver {
 				/*StorageManager mStorageManager = context.getSystemService(StorageManager.class);
 				VolumeInfo vol = mStorageManager.findVolumeById(id);
 				scanFile(context, vol.getPath().getPath());*/
-				scan(context, MediaProvider.EXTERNAL_VOLUME);
+				scan(context, MediaProvider.EXTERNAL_VOLUME, null);
 			}
 	        }
-	}else if(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE.equals(action) && "Documents".equals(packageName)){
-		scan(context, MediaProvider.EXTERNAL_VOLUME);
 	}else {
             if (uri != null && uri.getScheme() != null && uri.getScheme().equals("file")) {
                 // handle intents related to external storage
@@ -73,34 +70,41 @@ public class MediaScannerReceiver extends BroadcastReceiver {
                     Log.e(TAG, "couldn't canonicalize " + path);
                     return;
                 }
+				String volume = MediaProvider.EXTERNAL_VOLUME;
                 if (path.startsWith(legacyPath)) {
                     path = externalStoragePath + path.substring(legacyPath.length());
+					volume = MediaProvider.INTERNAL_VOLUME;
                 }
 
+                String packageName = intent.getStringExtra("package");
+                Log.d(TAG, "action: " + action + " path: " + path + " externalStoragePath:"+externalStoragePath);
                 if (Intent.ACTION_MEDIA_MOUNTED.equals(action)) {
                     // scan whenever any volume is mounted
-                    scan(context, MediaProvider.EXTERNAL_VOLUME);
+                    scan(context, MediaProvider.EXTERNAL_VOLUME, path);
                 } else if (Intent.ACTION_MEDIA_SCANNER_SCAN_FILE.equals(action) &&
-                        path != null && path.startsWith(externalStoragePath + "/")) {
-                    scanFile(context, path);
-                } else if ( Intent.ACTION_MEDIA_SCANNER_SCAN_FILE.equals(action) &&
-                        "RockExplorer".equals(packageName)) {
-                    scan(context, MediaProvider.INTERNAL_VOLUME);
-                    scan(context, MediaProvider.EXTERNAL_VOLUME);
+                        path != null && ("RockExplorer".equals(packageName) || ("DocumentUI".equals(packageName)))) {
+                	File file = new File(path);
+                	if(file != null && file.isDirectory()){
+                		scan(context, volume, path);
+                	}else{
+                		scanFile(context, volume, path);
+                	}
                 }
             }
         }
     }
 
-    private void scan(Context context, String volume) {
+    private void scan(Context context, String volume, String path) {
         Bundle args = new Bundle();
         args.putString("volume", volume);
+        args.putString("path", path);
         context.startService(
                 new Intent(context, MediaScannerService.class).putExtras(args));
     }    
 
-    private void scanFile(Context context, String path) {
+    private void scanFile(Context context, String volume, String path) {
         Bundle args = new Bundle();
+		args.putString("volume", volume);
         args.putString("filepath", path);
         context.startService(
                 new Intent(context, MediaScannerService.class).putExtras(args));
