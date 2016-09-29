@@ -189,6 +189,7 @@ public class MediaScannerService extends Service implements Runnable
     }
    
     private Uri scanFile(String path, String volumeName, String mimeType) {
+        if(volumeName==null)volumeName = MediaProvider.EXTERNAL_VOLUME;
         openDatabase(volumeName);
         MediaScanner scanner = createMediaScanner();
         try {
