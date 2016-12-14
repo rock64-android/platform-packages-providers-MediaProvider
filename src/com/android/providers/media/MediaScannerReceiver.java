@@ -34,6 +34,7 @@ import android.os.SystemProperties;
 
 public class MediaScannerReceiver extends BroadcastReceiver {
     private final static String TAG = "MediaScannerReceiver";
+    private final static String SCAN_FODER = "android.intent.action.MEDIA_SCANNER_SCAN_FODER";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -58,7 +59,7 @@ public class MediaScannerReceiver extends BroadcastReceiver {
 			}
 	        }
         } else {
-            if (uri.getScheme().equals("file")) {
+            if (uri != null && uri.getScheme().equals("file")) {
                 // handle intents related to external storage
                 String path = uri.getPath();
                 String externalStoragePath = Environment.getExternalStorageDirectory().getPath();
@@ -70,17 +71,24 @@ public class MediaScannerReceiver extends BroadcastReceiver {
                     Log.e(TAG, "couldn't canonicalize " + path);
                     return;
                 }
+				String volume = MediaProvider.EXTERNAL_VOLUME;
                 if (path.startsWith(legacyPath)) {
                     path = externalStoragePath + path.substring(legacyPath.length());
+					volume = MediaProvider.INTERNAL_VOLUME;
                 }
 
                 Log.d(TAG, "action: " + action + " path: " + path);
                 if (Intent.ACTION_MEDIA_MOUNTED.equals(action)) {
-                    // scan whenever any volume is mounted
-                    scan(context, MediaProvider.EXTERNAL_VOLUME);
+                    if(path != null){
+               	    	scanFoder(context, MediaProvider.EXTERNAL_VOLUME, path);
+		    }else{
+		    	scan(context, MediaProvider.EXTERNAL_VOLUME);
+		    }
                 } else if (Intent.ACTION_MEDIA_SCANNER_SCAN_FILE.equals(action) &&
-                        path != null && path.startsWith(externalStoragePath + "/")) {
-                    scanFile(context, path);
+                        path != null /*&& path.startsWith(externalStoragePath + "/")*/) {
+                    scanFile(context, volume, path);
+                } else if (SCAN_FODER.equals(action) && path != null) { 
+                	scanFoder(context, volume, path);
                 }
             }
         }
@@ -93,10 +101,18 @@ public class MediaScannerReceiver extends BroadcastReceiver {
                 new Intent(context, MediaScannerService.class).putExtras(args));
     }    
 
-    private void scanFile(Context context, String path) {
+    private void scanFile(Context context, String volume, String path) {
         Bundle args = new Bundle();
+		args.putString("volume", volume);
         args.putString("filepath", path);
         context.startService(
                 new Intent(context, MediaScannerService.class).putExtras(args));
     }    
+	private void scanFoder(Context context, String volume, String path) {
+        Bundle args = new Bundle();
+        args.putString("volume", volume);
+        args.putString("foderpath", path);
+        context.startService(
+                new Intent(context, MediaScannerService.class).putExtras(args));
+    }  
 }

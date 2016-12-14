@@ -63,6 +63,10 @@
                 <action android:name="android.intent.action.MEDIA_SCANNER_SCAN_FILE" />
                 <data android:scheme="file" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_SCANNER_SCAN_FODER" />
+                <data android:scheme="file" />
+            </intent-filter>
         </receiver>
 
         <service android:name="MediaScannerService" android:exported="true">
